@@ -83,7 +83,7 @@ class NTTContext:
         for i in range(self.degree):
             self.reversed_bits[i] = reverse_bits(i, width) % self.degree
 
-     def ntt(self, coeffs, rou):
+    def ntt(self, coeffs, rou):
         """Runs NTT on the given coefficients.
 
         Runs iterated NTT with the given coefficients and roots of unity. See
@@ -121,7 +121,7 @@ class NTTContext:
 
         return result
 
-     def ftt_fwd(self, coeffs):
+    def ftt_fwd(self, coeffs):
         """Runs forward FTT on the given coefficients.
 
         Runs forward FTT with the given coefficients and parameters in the context.
@@ -300,80 +300,79 @@ class FFTContext:
         assert len(values) <= self.fft_length / 4, "Input vector must have length at most " \
             + str(self.fft_length / 4) + " < " + str(len(values)) + " = len(values)"
 
-   def embedding(self, coeffs):
-    """Computes a variant of the canonical embedding on the given coefficients.
+        def embedding(self, coeffs):
+        """Computes a variant of the canonical embedding on the given coefficients.
 
-    Computes the canonical embedding which consists of evaluating a given polynomial at roots of unity
-    that are indexed 1 (mod 4), w, w^5, w^9, ...
-    The evaluations are returned in the order: w, w^5, w^(5^2), ...
+        Computes the canonical embedding which consists of evaluating a given polynomial at roots of unity
+        that are indexed 1 (mod 4), w, w^5, w^9, ...
+        The evaluations are returned in the order: w, w^5, w^(5^2), ...
 
-    Args:
-        coeffs (list): List of complex numbers to transform.
+        Args:
+            coeffs (list): List of complex numbers to transform.
 
-    Returns:
-        List of transformed coefficients.
-    """
-    self.check_embedding_input(coeffs)
-    num_coeffs = len(coeffs)
-    result = bit_reverse_vec(coeffs)
-    log_num_coeffs = int(log(num_coeffs, 2))
+        Returns:
+            List of transformed coefficients.
+        """
+        self.check_embedding_input(coeffs)
+        num_coeffs = len(coeffs)
+        result = bit_reverse_vec(coeffs)
+        log_num_coeffs = int(log(num_coeffs, 2))
 
-    for logm in range(1, log_num_coeffs + 1):
-        idx_mod = 1 << (logm + 2)
-        gap = self.fft_length // idx_mod
-        for j in range(0, num_coeffs, (1 << logm)):
-            for i in range(1 << (logm - 1)):
-                index_even = j + i
-                index_odd = j + i + (1 << (logm - 1))
+        for logm in range(1, log_num_coeffs + 1):
+            idx_mod = 1 << (logm + 2)
+            gap = self.fft_length // idx_mod
+            for j in range(0, num_coeffs, (1 << logm)):
+                for i in range(1 << (logm - 1)):
+                    index_even = j + i
+                    index_odd = j + i + (1 << (logm - 1))
 
-                rou_idx = (self.rot_group[i] % idx_mod) * gap
-                omega_factor = self.roots_of_unity[rou_idx] * result[index_odd]
+                    rou_idx = (self.rot_group[i] % idx_mod) * gap
+                    omega_factor = self.roots_of_unity[rou_idx] * result[index_odd]
 
-                butterfly_plus = result[index_even] + omega_factor
-                butterfly_minus = result[index_even] - omega_factor
+                    butterfly_plus = result[index_even] + omega_factor
+                    butterfly_minus = result[index_even] - omega_factor
 
-                result[index_even] = butterfly_plus
-                result[index_odd] = butterfly_minus
+                    result[index_even] = butterfly_plus
+                    result[index_odd] = butterfly_minus
 
-    return result
+        return result
 
-def embedding_inv(self, coeffs):
-    """Computes the inverse variant of the canonical embedding.
+        def embedding_inv(self, coeffs):
+        """Computes the inverse variant of the canonical embedding.
 
-    Args:
-        values (list): List of complex numbers to transform.
+        Args:
+            values (list): List of complex numbers to transform.
 
-    Returns:
-        List of transformed coefficients.
-    """
-    self.check_embedding_input(coeffs)
-    num_coeffs = len(coeffs)
-    result = coeffs.copy()
-    log_num_coeffs = int(log(num_coeffs, 2))
+        Returns:
+            List of transformed coefficients.
+        """
+        self.check_embedding_input(coeffs)
+        num_coeffs = len(coeffs)
+        result = coeffs.copy()
+        log_num_coeffs = int(log(num_coeffs, 2))
 
-    for logm in range(log_num_coeffs, 0, -1):
-        idx_mod = 1 << (logm + 2)
-        gap = self.fft_length // idx_mod
-        for j in range(0, num_coeffs, 1 << logm):
-            for i in range(1 << (logm - 1)):
-                index_even = j + i
-                index_odd = j + i + (1 << (logm - 1))
+        for logm in range(log_num_coeffs, 0, -1):
+            idx_mod = 1 << (logm + 2)
+            gap = self.fft_length // idx_mod
+            for j in range(0, num_coeffs, 1 << logm):
+                for i in range(1 << (logm - 1)):
+                    index_even = j + i
+                    index_odd = j + i + (1 << (logm - 1))
 
-                rou_idx = (self.rot_group[i] % idx_mod) * gap
+                    rou_idx = (self.rot_group[i] % idx_mod) * gap
 
-                butterfly_plus = result[index_even] + result[index_odd]
-                butterfly_minus = result[index_even] - result[index_odd]
-                butterfly_minus *= self.roots_of_unity_inv[rou_idx]
+                    butterfly_plus = result[index_even] + result[index_odd]
+                    butterfly_minus = result[index_even] - result[index_odd]
+                    butterfly_minus *= self.roots_of_unity_inv[rou_idx]
 
-                result[index_even] = butterfly_plus
-                result[index_odd] = butterfly_minus
+                    result[index_even] = butterfly_plus
+                    result[index_odd] = butterfly_minus
 
-    to_scale_down = bit_reverse_vec(result)
-    
-    # Vectorized scaling using NumPy
-    to_scale_arr = np.array(to_scale_down)
-    to_scale_arr /= num_coeffs
-    
-    return to_scale_arr.tolist()
-
+        to_scale_down = bit_reverse_vec(result)
+        
+        # Vectorized division using NumPy
+        to_scale_arr = np.array(to_scale_down)
+        to_scale_arr /= num_coeffs
+        
+        return to_scale_arr.tolist()
 
