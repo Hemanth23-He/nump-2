@@ -300,7 +300,7 @@ class FFTContext:
         assert len(values) <= self.fft_length / 4, "Input vector must have length at most " \
             + str(self.fft_length / 4) + " < " + str(len(values)) + " = len(values)"
 
-        def embedding(self, coeffs):
+     def embedding(self, coeffs):
         """Computes a variant of the canonical embedding on the given coefficients.
 
         Computes the canonical embedding which consists of evaluating a given polynomial at roots of unity
@@ -337,7 +337,7 @@ class FFTContext:
 
         return result
 
-        def embedding_inv(self, coeffs):
+     def embedding_inv(self, coeffs):
         """Computes the inverse variant of the canonical embedding.
 
         Args:
