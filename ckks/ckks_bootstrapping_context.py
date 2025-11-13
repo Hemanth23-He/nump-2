@@ -54,34 +54,26 @@ class CKKSBootstrappingContext:
         num_slots = self.poly_degree // 2
         
         # NumPy optimization: vectorized primitive root computation
+        primitive_roots = [0] * num_slots
         power = 1
-        powers = np.zeros(num_slots, dtype=np.int64)
+        powers = []
         for i in range(num_slots):
-            powers[i] = power
+            powers.append(power)
             power = (power * 5) % (2 * self.poly_degree)
         
-        # Vectorized angle computation
-        angles = np.pi * powers / self.poly_degree
-        primitive_roots = np.cos(angles) + 1j * np.sin(angles)
+        # Vectorized computation of primitive roots
+        angles = np.array(powers) * math.pi / self.poly_degree
+        for i in range(num_slots):
+            primitive_roots[i] = complex(np.cos(angles[i]), np.sin(angles[i]))
         
-        # Compute matrices for slot to coeff transformation using NumPy
-        # encoding_mat0[i][k] = primitive_roots[i]^k
-        k_indices = np.arange(num_slots)
-        i_mesh, k_mesh = np.meshgrid(np.arange(num_slots), k_indices, indexing='ij')
-        
-        # Use object array to avoid overflow with complex numbers
+        # Compute matrices for slot to coeff transformation
         self.encoding_mat0 = [[1] * num_slots for _ in range(num_slots)]
         self.encoding_mat1 = [[1] * num_slots for _ in range(num_slots)]
         
-        # Compute encoding_mat0: encoding_mat0[i][k] = primitive_roots[i]^k
         for i in range(num_slots):
-            root_power = 1
-            for k in range(num_slots):
-                self.encoding_mat0[i][k] = root_power
-                if k < num_slots - 1:
-                    root_power = root_power * primitive_roots[i]
+            for k in range(1, num_slots):
+                self.encoding_mat0[i][k] = self.encoding_mat0[i][k - 1] * primitive_roots[i]
         
-        # Compute encoding_mat1: starts from last element of encoding_mat0
         for i in range(num_slots):
             self.encoding_mat1[i][0] = self.encoding_mat0[i][-1] * primitive_roots[i]
         
