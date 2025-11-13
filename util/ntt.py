@@ -83,7 +83,7 @@ class NTTContext:
         for i in range(self.degree):
             self.reversed_bits[i] = reverse_bits(i, width) % self.degree
 
-    def ntt(self, coeffs, rou):
+     def ntt(self, coeffs, rou):
         """Runs NTT on the given coefficients.
 
         Runs iterated NTT with the given coefficients and roots of unity. See
@@ -121,7 +121,7 @@ class NTTContext:
 
         return result
 
-    def ftt_fwd(self, coeffs):
+     def ftt_fwd(self, coeffs):
         """Runs forward FTT on the given coefficients.
 
         Runs forward FTT with the given coefficients and parameters in the context.
