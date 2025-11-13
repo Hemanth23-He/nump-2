@@ -292,7 +292,7 @@ class CKKSEvaluator:
         
         return self.switch_key(rot_ciph, rot_key.key)
     
-    def conjugate(self, ciph, conj_key):
+        def conjugate(self, ciph, conj_key):
         """Conjugates the ciphertext.
         
         Returns a ciphertext for a plaintext which is conjugated.
@@ -402,8 +402,8 @@ class CKKSEvaluator:
         Returns:
             Plaintext with constant value.
         """
-        # NumPy optimization: use zeros array instead of list initialization
-        plain_vec = np.zeros(self.degree, dtype=int).tolist()
+        # ⚠️ CRITICAL FIX: Use dtype=object for arbitrary precision (large integers)
+        plain_vec = np.zeros(self.degree, dtype=object).tolist()
         plain_vec[0] = int(const * self.scaling_factor)
         return Plaintext(Polynomial(self.degree, plain_vec), self.scaling_factor)
     
@@ -419,8 +419,8 @@ class CKKSEvaluator:
         Returns:
             Plaintext with constant value.
         """
-        # NumPy optimization: use full array instead of list multiplication
-        plain_vec = np.full(self.degree // 2, const).tolist()
+        # ⚠️ CRITICAL FIX: Use dtype=object for complex numbers and large values
+        plain_vec = np.full(self.degree // 2, const, dtype=object).tolist()
         return encoder.encode(plain_vec, self.scaling_factor)
     
     def coeff_to_slot(self, ciph, rot_keys, conj_key, encoder):
@@ -594,62 +594,63 @@ class CKKSEvaluator:
             ciph = self.rescale(ciph, self.scaling_factor)
         
         return ciph
+    
     def bootstrap(self, ciph, rot_keys, conj_key, relin_key, encoder):
-    """Evaluates the bootstrapping circuit on ciph.
-    
-    Takes a ciphertext (mod q), that encrypts some value m, and outputs a new
-    ciphertext (mod Q_0) that also encrypts m, via bootstrapping.
-    
-    Args:
-        ciph (Ciphertext): Ciphertext to transform.
-        rot_keys (dict (RotationKey)): Dictionary of rotation keys, indexed by rotation number
-        conj_key (PublicKey): Conjugation key.
-        relin_key (PublicKey): Relinearization key.
-        encoder (CKKSEncoder): Encoder.
-    
-    Returns:
-        Ciphertext for exponential.
-    """
-    # Raise modulus.
-    old_modulus = ciph.modulus
-    old_scaling_factor = self.scaling_factor
-    self.raise_modulus(ciph)
-    
-    # Coeff to slot.
-    ciph0, ciph1 = self.coeff_to_slot(ciph, rot_keys, conj_key, encoder)
-    
-    # Exponentiate.
-    const = self.scaling_factor / old_modulus * 2 * math.pi * 1j
-    ciph_exp0 = self.exp(ciph0, const, relin_key, encoder)
-    ciph_neg_exp0 = self.conjugate(ciph_exp0, conj_key)
-    ciph_exp1 = self.exp(ciph1, const, relin_key, encoder)
-    ciph_neg_exp1 = self.conjugate(ciph_exp1, conj_key)
-    
-    # Compute sine.
-    ciph_sin0 = self.subtract(ciph_exp0, ciph_neg_exp0)
-    ciph_sin1 = self.subtract(ciph_exp1, ciph_neg_exp1)
-    
-    # Scale answer.
-    plain_const = self.create_complex_constant_plain(
-        old_modulus / self.scaling_factor * 0.25 / math.pi / 1j, encoder)
-    ciph0 = self.multiply_plain(ciph_sin0, plain_const)
-    ciph1 = self.multiply_plain(ciph_sin1, plain_const)
-    ciph0 = self.rescale(ciph0, self.scaling_factor)
-    ciph1 = self.rescale(ciph1, self.scaling_factor)
-    
-    # Slot to coeff.
-    old_ciph = ciph
-    ciph = self.slot_to_coeff(ciph0, ciph1, rot_keys, encoder)
-    
-    # Reset scaling factor.
-    self.scaling_factor = old_scaling_factor
-    ciph.scaling_factor = self.scaling_factor
-    
-    print("------------ BOOTSTRAPPING MODULUS CHANGES -------------")
-    print("Old modulus q: %d bits" % (int(math.log(old_modulus, 2))))
-    print("Raised modulus Q_0: %d bits" % (int(math.log(self.big_modulus, 2))))
-    print("Final modulus Q_1: %d bits" % (int(math.log(ciph.modulus, 2))))
-    
-    return old_ciph, ciph
+        """Evaluates the bootstrapping circuit on ciph.
+        
+        Takes a ciphertext (mod q), that encrypts some value m, and outputs a new
+        ciphertext (mod Q_0) that also encrypts m, via bootstrapping.
+        
+        Args:
+            ciph (Ciphertext): Ciphertext to transform.
+            rot_keys (dict (RotationKey)): Dictionary of rotation keys, indexed by rotation number
+            conj_key (PublicKey): Conjugation key.
+            relin_key (PublicKey): Relinearization key.
+            encoder (CKKSEncoder): Encoder.
+        
+        Returns:
+            Ciphertext for exponential.
+        """
+        # Raise modulus.
+        old_modulus = ciph.modulus
+        old_scaling_factor = self.scaling_factor
+        self.raise_modulus(ciph)
+        
+        # Coeff to slot.
+        ciph0, ciph1 = self.coeff_to_slot(ciph, rot_keys, conj_key, encoder)
+        
+        # Exponentiate.
+        const = self.scaling_factor / old_modulus * 2 * math.pi * 1j
+        ciph_exp0 = self.exp(ciph0, const, relin_key, encoder)
+        ciph_neg_exp0 = self.conjugate(ciph_exp0, conj_key)
+        ciph_exp1 = self.exp(ciph1, const, relin_key, encoder)
+        ciph_neg_exp1 = self.conjugate(ciph_exp1, conj_key)
+        
+        # Compute sine.
+        ciph_sin0 = self.subtract(ciph_exp0, ciph_neg_exp0)
+        ciph_sin1 = self.subtract(ciph_exp1, ciph_neg_exp1)
+        
+        # Scale answer.
+        plain_const = self.create_complex_constant_plain(
+            old_modulus / self.scaling_factor * 0.25 / math.pi / 1j, encoder)
+        ciph0 = self.multiply_plain(ciph_sin0, plain_const)
+        ciph1 = self.multiply_plain(ciph_sin1, plain_const)
+        ciph0 = self.rescale(ciph0, self.scaling_factor)
+        ciph1 = self.rescale(ciph1, self.scaling_factor)
+        
+        # Slot to coeff.
+        old_ciph = ciph
+        ciph = self.slot_to_coeff(ciph0, ciph1, rot_keys, encoder)
+        
+        # Reset scaling factor.
+        self.scaling_factor = old_scaling_factor
+        ciph.scaling_factor = self.scaling_factor
+        
+        print("------------ BOOTSTRAPPING MODULUS CHANGES -------------")
+        print("Old modulus q: %d bits" % (int(math.log(old_modulus, 2))))
+        print("Raised modulus Q_0: %d bits" % (int(math.log(self.big_modulus, 2))))
+        print("Final modulus Q_1: %d bits" % (int(math.log(ciph.modulus, 2))))
+        
+        return old_ciph, ciph
 
 
